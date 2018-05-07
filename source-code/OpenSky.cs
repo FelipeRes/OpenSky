@@ -53,6 +53,10 @@ namespace OpenSky{
 			d<=334?1+d/334*11:
 			d<=365?1+d/365*12:
 			BaseTime.month(d-365);
+		//static public Func<double,double,Func<double,double>> makeCycle = (module,division) => t => ((1+t)/division)%module;
+		static public Func<double,double,Func<double,double>> makeCycle = (module,division) => t => 1+(module*((BaseTime.t(t)/division)-(int)(BaseTime.t(t)/division)));
+		//this sum with one is because the linear interpolation function get the second data array to subtract the first data array, then the read of data starts on second parameter
+		//static public Func<double,double,Func<double,double>> makeCycle = (module,division) => t => t*(module/division)<module?1+t*(module/division):BaseTime.makeCycle(module,division)(t-module);
 	}
 	public class Weather{
 
@@ -80,22 +84,25 @@ namespace OpenSky{
 		//Interpolate the function on day time
 		public static Equation InterpolationDay(double[] p_fx){
 			double[] fx = Weather.JoinEndToStart (p_fx);
-			int[] x = Enumerable.Range(1,fx.Length).ToArray<int>();
+			int[] x = Enumerable.Range (1, fx.Length).ToArray<int> ();
 			return t => Weather.LinearSpline (x, fx) (BaseTime.current_hours (t));
 		}
 		//Interpolate the function with a custom time function
 		public static Equation InterpolationCustom(double[] p_fx, Func<double,double> baseTime){
 			double[] fx = Weather.JoinEndToStart (p_fx);
-			int[] x = Enumerable.Range(1,fx.Length).ToArray<int>();
-			return t => Weather.LinearSpline (x, fx) (baseTime (t));
+			int[] x = Enumerable.Range (1, fx.Length).ToArray<int> ();
+			return t => Weather.LinearSpline (x, fx) (baseTime(t));
 		}
 		//Average about two functions
 		public static Equation Average(Equation function1, Equation function2){
-			return t => (function1 (t) / function2 (t)) / 2;
+			return t => (function1 (t) + function2 (t)) / 2;
 		}
 		//Create a cyclic function based on Sin of hour
 		public static Equation Simple(double mediam, double amplitude){
 			return t => (Math.Sin ((BaseTime.t(t)/86400000 * Math.PI*2)+180) * amplitude) + mediam;
+		}
+		public static Equation MakeCycle(double[] data, double division){
+			return InterpolationCustom (data, BaseTime.makeCycle (data.Length, division));
 		}
 
 	}
